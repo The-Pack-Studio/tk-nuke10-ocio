@@ -30,10 +30,6 @@ class NukeOCIONode(tank.platform.Application):
         # this app should not do anything if nuke is run without gui.
 
         if nuke.env['gui']:
-            # remove callbacks from sharedNuke menu.py
-            nuke.removeOnScriptLoad(nozonscripts.setOCIO)
-            nuke.removeOnScriptSave(nozonscripts.setOCIO)
-            nuke.removeOnCreate(nozonscripts.setOCIOContext, nodeClass='OCIODisplay')
 
             # first deal with nuke root settings: we don't need a context for this
 
