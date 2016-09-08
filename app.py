@@ -80,7 +80,8 @@ class NukeOCIONode(tank.platform.Application):
         Add callbacks to watch for certain events:
         """
 
-        nuke.addOnUserCreate(self._setOCIOColorspaceContext, nodeClass="OCIOColorSpace") 
+        nuke.addOnUserCreate(self._setOCIOColorspaceContext, nodeClass="OCIOColorSpace")
+        nuke.addKnobChanged(self._setReadNodeOCIO, nodeClass="Read")
         nuke.addOnCreate(self._setOCIODisplayContext, nodeClass="OCIODisplay")
 
         nuke.addOnCreate(self._warningNoCameraColorspace, nodeClass='Root' )
@@ -89,7 +90,8 @@ class NukeOCIONode(tank.platform.Application):
         """
         Removed previously added callbacks
         """
-        nuke.removeOnUserCreate(self._setOCIOColorspaceContext, nodeClass="OCIOColorSpace") 
+        nuke.removeOnUserCreate(self._setOCIOColorspaceContext, nodeClass="OCIOColorSpace")
+        nuke.removeKnobChanged(self._setReadNodeOCIO, nodeClass="Read")
         nuke.removeOnCreate(self._setOCIODisplayContext, nodeClass="OCIODisplay")
 
         nuke.removeOnCreate(self._warningNoCameraColorspace, nodeClass='Root' )
@@ -150,6 +152,47 @@ class NukeOCIONode(tank.platform.Application):
             ocioNode.knob('value2').setValue(colorspace)
             ocioNode.knob('out_colorspace').setValue('Flat')
 
+    def _setReadNodeOCIO(self):
+
+        # setting OCIO context info for Read Nodes
+        # used in a KnobChanged callback (OnUserCreate callback does not work because file knob is not set when the OnUserCreate function is called)
+        # possible problem when changing the file to the exact same file : in that case the colorspace will be reset
+
+        readNode = nuke.thisNode()
+        fileknob = nuke.thisKnob()
+        if not fileknob.name() == 'file': # stop if the knob being changed is not the file knob
+            return
+        
+        imagePath = readNode.knob('file').toScript()
+        imagePath = nuke.filenameFilter(imagePath)
+        print 'imagePath', imagePath
+        tk = self.sgtk
+        tmpl = tk.template_from_path(imagePath)
+        print 'tmpl', tmpl
+        if tmpl:
+            fields = tmpl.get_fields(imagePath)
+            shot = fields.get("Shot")
+            if shot: # we know the shot code, so set it on the OCIO context tab
+                readNode['key1'].setValue('EVENT')
+                readNode['value1'].setValue(shot)
+
+            colorspace = fields.get("colorspace")
+            if not colorspace: # if there's no colorspace field in the template
+                if tmpl.name == 'maya_render_output': colorspace = 'Flat'
+                elif tmpl.name == 'hiero_render_Jpeg_path': colorspace = 'sRGB'
+            if colorspace: # if we now have a colorspace set it on the ocio context and on the read node colorspace knob
+                readNode['key2'].setValue('CAMERA')
+                readNode['value2'].setValue(colorspace)
+                readNode['colorspace'].setValue(colorspace)
+
+
+
+        # First we setup the node to the event number and camera colorspace from the current context
+        
+        # readNode['key1'].setValue('EVENT')
+        # readNode['value1'].setValue(self.event)
+        # readNode['key2'].setValue('CAMERA')
+        # readNode['value2'].setValue(self.camera_colorspace)
 
     def _setOCIODisplayContext(self):
            
@@ -212,14 +255,16 @@ class NukeOCIONode(tank.platform.Application):
         ''' 
         if nuke.root().knob("defaultViewerLUT").value() == 'Nuke Root LUTs':
 
-            nuke.root().knob("defaultViewerLUT").setValue("OCIO LUTs") 
+            nuke.root().knob("colorManagement").setValue("OCIO") 
             nuke.root().knob("OCIO_config").setValue("custom") 
-            nuke.root().knob("customOCIOConfigPath").setValue(ocio_path) 
+            nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
+            nuke.root().knob("workingSpaceLUT").setValue('Flat')
+
 
         '''
         Second case : the viewer process LUTs is configured to use OCIO Luts
         '''
-        if nuke.root().knob("defaultViewerLUT").value() == 'OCIO LUTs':
+        if nuke.root().knob("defaultViewerLUT").value() == 'OCIO':
             # if the ocio config is not set to custom or if the ocio config file path is not correct we ask the user if he allows us to correct it
             nuke_ocio_path = nuke.root().knob("customOCIOConfigPath").value()
             nuke_ocio_path = nuke.filenameFilter(nuke_ocio_path) # for cross platform compatibility
@@ -229,6 +274,7 @@ class NukeOCIONode(tank.platform.Application):
                     It is supposed to use the custom OCIO config for this project located in:<br><i>%s</i><p>\
                     Do you want me to correct the OCIO settings ?<br>Please be aware that changing the OCIO config is going to reset all ocio nodes.' % (nuke.root().knob("OCIO_config").value(), nuke.root().knob("customOCIOConfigPath").value(), ocio_path))
                 if anwser:
-                    nuke.root().knob("defaultViewerLUT").setValue("OCIO LUTs") 
+                    nuke.root().knob("colorManagement").setValue("OCIO") 
                     nuke.root().knob("OCIO_config").setValue("custom") 
-                    nuke.root().knob("customOCIOConfigPath").setValue(ocio_path) 
+                    nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
+                    nuke.root().knob("workingSpaceLUT").setValue('Flat')
