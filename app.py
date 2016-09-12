@@ -81,7 +81,8 @@ class NukeOCIONode(tank.platform.Application):
         """
 
         nuke.addOnUserCreate(self._setOCIOColorspaceContext, nodeClass="OCIOColorSpace")
-        nuke.addKnobChanged(self._setReadNodeOCIO, nodeClass="Read")
+        nuke.addKnobChanged(self._setReadNodeOCIO, {'callType': 'knobChanged'}, nodeClass="Read")
+        nuke.addOnCreate(self._setReadNodeOCIO, {'callType': 'onCreate'}, nodeClass="Read")
         nuke.addOnCreate(self._setOCIODisplayContext, nodeClass="OCIODisplay")
 
         nuke.addOnCreate(self._warningNoCameraColorspace, nodeClass='Root' )
@@ -91,7 +92,8 @@ class NukeOCIONode(tank.platform.Application):
         Removed previously added callbacks
         """
         nuke.removeOnUserCreate(self._setOCIOColorspaceContext, nodeClass="OCIOColorSpace")
-        nuke.removeKnobChanged(self._setReadNodeOCIO, nodeClass="Read")
+        nuke.removeKnobChanged(self._setReadNodeOCIO, {'callType': 'knobChanged'}, nodeClass="Read")
+        nuke.removeOnCreate(self._setReadNodeOCIO, {'callType': 'onCreate'}, nodeClass="Read")
         nuke.removeOnCreate(self._setOCIODisplayContext, nodeClass="OCIODisplay")
 
         nuke.removeOnCreate(self._warningNoCameraColorspace, nodeClass='Root' )
@@ -152,23 +154,37 @@ class NukeOCIONode(tank.platform.Application):
             ocioNode.knob('value2').setValue(colorspace)
             ocioNode.knob('out_colorspace').setValue('Flat')
 
-    def _setReadNodeOCIO(self):
+
+    def _setReadNodeOCIO(self, kwargs):
 
         # setting OCIO context info for Read Nodes
         # used in a KnobChanged callback (OnUserCreate callback does not work because file knob is not set when the OnUserCreate function is called)
         # possible problem when changing the file to the exact same file : in that case the colorspace will be reset
-
-        readNode = nuke.thisNode()
-        fileknob = nuke.thisKnob()
-        if not fileknob.name() == 'file': # stop if the knob being changed is not the file knob
-            return
         
+        # what should I do when creating a read from a sequence with a shotgrade or globalgrade baked in ? Interpret as sRGB ?
+        # what If I load a render from another project ? Interpret as Flat anyway ?
+
+        callType = kwargs['callType']
+        readNode = nuke.thisNode()
+
+        if callType == 'knobChanged':
+            print 'knobchanged callback'
+            fileknob = nuke.thisKnob()
+            if fileknob.name() != 'file': # stop if the knob being changed is not the file knob
+                return
+        if callType == 'onCreate': # if there's any info already in the ocio context, we don't want to change anything
+            print 'oncreate callback'
+            if readNode['key1'].value()   != '': return
+            if readNode['value1'].value() != '': return
+            if readNode['key2'].value()   != '': return
+            if readNode['value2'].value() != '': return
+
         imagePath = readNode.knob('file').toScript()
         imagePath = nuke.filenameFilter(imagePath)
-        print 'imagePath', imagePath
+        # print 'imagePath', imagePath
         tk = self.sgtk
         tmpl = tk.template_from_path(imagePath)
-        print 'tmpl', tmpl
+        # print 'tmpl', tmpl
         if tmpl:
             fields = tmpl.get_fields(imagePath)
             shot = fields.get("Shot")
@@ -184,15 +200,6 @@ class NukeOCIONode(tank.platform.Application):
                 readNode['key2'].setValue('CAMERA')
                 readNode['value2'].setValue(colorspace)
                 readNode['colorspace'].setValue(colorspace)
-
-
-
-        # First we setup the node to the event number and camera colorspace from the current context
-        
-        # readNode['key1'].setValue('EVENT')
-        # readNode['value1'].setValue(self.event)
-        # readNode['key2'].setValue('CAMERA')
-        # readNode['value2'].setValue(self.camera_colorspace)
 
     def _setOCIODisplayContext(self):
            
