@@ -255,33 +255,42 @@ class NukeOCIONode(tank.platform.Application):
         ocio_path = self.sgtk.paths_from_template(ocio_template, {})[0]
         ocio_path = ocio_path.replace(os.path.sep, "/")
 
-        '''
-        First case : the viewer process LUTs is set to 'Nuke Root LUTs'.
-        In this case we assume the user has not intervened, Nuke is using it's default values
-        So we change it to use the project ocio config without asking the user
-        ''' 
-        if nuke.root().knob("defaultViewerLUT").value() == 'Nuke Root LUTs':
+        workingSpace = self.get_setting('workingspace')
 
-            nuke.root().knob("colorManagement").setValue("OCIO") 
-            nuke.root().knob("OCIO_config").setValue("custom") 
-            nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
-            nuke.root().knob("workingSpaceLUT").setValue('Flat')
+        nuke.root().knob("colorManagement").setValue("OCIO") 
+        nuke.root().knob("OCIO_config").setValue("custom") 
+        nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
+        nuke.root().knob("workingSpaceLUT").setValue(workingSpace)
 
 
-        '''
-        Second case : the viewer process LUTs is configured to use OCIO Luts
-        '''
-        if nuke.root().knob("defaultViewerLUT").value() == 'OCIO':
-            # if the ocio config is not set to custom or if the ocio config file path is not correct we ask the user if he allows us to correct it
-            nuke_ocio_path = nuke.root().knob("customOCIOConfigPath").value()
-            nuke_ocio_path = nuke.filenameFilter(nuke_ocio_path) # for cross platform compatibility
-            if nuke.root().knob("OCIO_config").value() != "custom" or nuke_ocio_path.lower() != ocio_path.lower():
-                anwser = nuke.ask('Warning. Your OCIO settings do not match the correct settings for this project<p> \
-                    Nuke is currently using the %s OCIO config located in:<br><i>%s</i><p>\
-                    It is supposed to use the custom OCIO config for this project located in:<br><i>%s</i><p>\
-                    Do you want me to correct the OCIO settings ?<br>Please be aware that changing the OCIO config is going to reset all ocio nodes.' % (nuke.root().knob("OCIO_config").value(), nuke.root().knob("customOCIOConfigPath").value(), ocio_path))
-                if anwser:
-                    nuke.root().knob("colorManagement").setValue("OCIO") 
-                    nuke.root().knob("OCIO_config").setValue("custom") 
-                    nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
-                    nuke.root().knob("workingSpaceLUT").setValue('Flat')
+
+        # '''
+        # First case : the viewer process LUTs is set to 'Nuke Root LUTs'.
+        # In this case we assume the user has not intervened, Nuke is using it's default values
+        # So we change it to use the project ocio config without asking the user
+        # ''' 
+        # if nuke.root().knob("defaultViewerLUT").value() == 'Nuke Root LUTs':
+
+        #     nuke.root().knob("colorManagement").setValue("OCIO") 
+        #     nuke.root().knob("OCIO_config").setValue("custom") 
+        #     nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
+        #     nuke.root().knob("workingSpaceLUT").setValue(workingSpace)
+
+
+        # '''
+        # Second case : the viewer process LUTs is configured to use OCIO Luts
+        # '''
+        # if nuke.root().knob("defaultViewerLUT").value() == 'OCIO':
+        #     # if the ocio config is not set to custom or if the ocio config file path is not correct we ask the user if he allows us to correct it
+        #     nuke_ocio_path = nuke.root().knob("customOCIOConfigPath").value()
+        #     nuke_ocio_path = nuke.filenameFilter(nuke_ocio_path) # for cross platform compatibility
+        #     if nuke.root().knob("OCIO_config").value() != "custom" or nuke_ocio_path.lower() != ocio_path.lower():
+        #         anwser = nuke.ask('Warning. Your OCIO settings do not match the correct settings for this project<p> \
+        #             Nuke is currently using the %s OCIO config located in:<br><i>%s</i><p>\
+        #             It is supposed to use the custom OCIO config for this project located in:<br><i>%s</i><p>\
+        #             Do you want me to correct the OCIO settings ?<br>Please be aware that changing the OCIO config is going to reset all ocio nodes.' % (nuke.root().knob("OCIO_config").value(), nuke.root().knob("customOCIOConfigPath").value(), ocio_path))
+        #         if anwser:
+        #             nuke.root().knob("colorManagement").setValue("OCIO") 
+        #             nuke.root().knob("OCIO_config").setValue("custom") 
+        #             nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
+        #             nuke.root().knob("workingSpaceLUT").setValue(workingSpace)
