@@ -196,6 +196,8 @@ class NukeOCIONode(tank.platform.Application):
             if not colorspace: # if there's no colorspace field in the template
                 if tmpl.name == 'maya_render_output': colorspace = 'Flat'
                 elif tmpl.name == 'hiero_render_Jpeg_path': colorspace = 'sRGB'
+                elif tmpl.name == 'hiero_render_Flat_path': colorspace = 'Flat'
+                elif tmpl.name == 'hiero_render_path': colorspace = 'Flat'
             if colorspace: # if we now have a colorspace set it on the ocio context and on the read node colorspace knob
                 readNode['key2'].setValue('CAMERA')
                 readNode['value2'].setValue(colorspace)
