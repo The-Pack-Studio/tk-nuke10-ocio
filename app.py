@@ -260,8 +260,9 @@ class NukeOCIONode(tank.platform.Application):
         workingSpace = self.get_setting('workingspace')
 
         nuke.root().knob("colorManagement").setValue("OCIO") 
-        nuke.root().knob("OCIO_config").setValue("custom") 
-        nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
+        nuke.root().knob("OCIO_config").setValue("custom")
+        if ocio_path != nuke.filenameFilter(nuke.root().knob("customOCIOConfigPath").value()): # only set the ocio path if it's not already set. Do not change it if it's the same path written for another platform
+            nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
         nuke.root().knob("workingSpaceLUT").setValue(workingSpace)
 
 
