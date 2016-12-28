@@ -17,6 +17,7 @@ import os
 import nuke
 import nozonscripts
 import tank
+import sgtk
 from tank import TankError
 
 
@@ -37,15 +38,18 @@ class NukeOCIONode(tank.platform.Application):
             self._add_root_callbacks()
             self.log_debug("Loading tk-nuke-ocio app.")
 
+            #setting stuff as the app is initialised. Not very good if the context is changed ?
+
             if self.context.entity is not None:
                 self.event = self.context.entity['name']
+                self.sequence = self.context.as_template_fields(self.sgtk.templates['nuke_shot_work'])['Sequence']
                 self.camera_colorspace = self._getCameraColorspaceFromShotgun()
 
                 self._setOCIOSettingsOnRootNode()
                 self._setOCIODisplayContext()
                 self._add_callbacks()
 
-                self.log_debug("The camera colorspace for '%s' has been fetched from Shotgun and is '%s'" % (self.event, self.camera_colorspace))
+                self.log_debug("The camera colorspace for shot %s from sequence %s has been fetched from Shotgun and is '%s'" % (self.event, self.sequence, self.camera_colorspace))
 
         else:
             pass
@@ -115,6 +119,8 @@ class NukeOCIONode(tank.platform.Application):
         ocioNode['value1'].setValue(self.event)
         ocioNode['key2'].setValue('CAMERA')
         ocioNode['value2'].setValue(self.camera_colorspace)
+        ocioNode['key3'].setValue('SEQUENCE')
+        ocioNode['value3'].setValue(self.sequence)
 
         # Now let's try to detect a read node in the upstream nodes
 
@@ -138,17 +144,38 @@ class NukeOCIONode(tank.platform.Application):
         else : return # stop here if we have found no read node
         
 
-        filename = os.path.basename(readNode.knob('file').getValue())
-        # find event by assuming it's the first part in front of the filename, just before the first underscore 
-        event = filename.split('_')[0]
-        ocioNode['value1'].setValue(event)
-        # find colorspace in filename string:
-        colorspaceList = self.get_setting('colorspaces')
-        for cs in colorspaceList:
-            if cs in filename:
-                colorspace = cs
-                break
-        else: colorspace = None
+        imagePath = readNode.knob('file').toScript()
+        imagePath = nuke.filenameFilter(imagePath)
+        
+        tk = self.sgtk
+        tmpl = tk.template_from_path(imagePath)
+
+
+        colorspace = None
+
+        if tmpl:
+            fields = tmpl.get_fields(imagePath)
+            shot = fields.get("Shot")
+            if shot: # we know the shot code, so set it on the OCIO context tab
+                ocioNode['key1'].setValue('EVENT')
+                ocioNode['value1'].setValue(shot)
+
+            colorspace = fields.get("colorspace")
+            if not colorspace: # if there's no colorspace field in the template
+                if tmpl.name == 'maya_render_output': colorspace = 'Flat'
+                elif tmpl.name == 'hiero_render_Jpeg_path': colorspace = 'sRGB'
+                elif tmpl.name == 'hiero_render_Flat_path': colorspace = 'Flat'
+                elif tmpl.name == 'hiero_render_path': colorspace = 'Flat'
+            if colorspace: # if we now have a colorspace, set it on the ocio context
+                ocioNode['key2'].setValue('CAMERA')
+                ocioNode['value2'].setValue(colorspace)
+
+            sequence = fields.get('Sequence')
+            if sequence: #we know the name of the sequence, set it on the OCIO context tab
+                ocioNode['key3'].setValue('SEQUENCE')
+                ocioNode['value3'].setValue(sequence)  
+
+
         if colorspace:
             ocioNode.knob('in_colorspace').setValue(colorspace)
             ocioNode.knob('value2').setValue(colorspace)
@@ -203,6 +230,11 @@ class NukeOCIONode(tank.platform.Application):
                 readNode['value2'].setValue(colorspace)
                 readNode['colorspace'].setValue(colorspace)
 
+            sequence = fields.get('Sequence')
+            if sequence: #we know the name of the sequence, set it on the OCIO context tab
+                readNode['key3'].setValue('SEQUENCE')
+                readNode['value3'].setValue(sequence)
+
     def _setOCIODisplayContext(self):
            
         listVP = nuke.ViewerProcess.registeredNames()
@@ -225,6 +257,10 @@ class NukeOCIONode(tank.platform.Application):
                         nuke.ViewerProcess.node(l)['key2'].setValue('CAMERA')
                     if nuke.ViewerProcess.node(l)['value2'].value() != camera_colorspace:
                         nuke.ViewerProcess.node(l)['value2'].setValue(camera_colorspace)
+                    if nuke.ViewerProcess.node(l)['key3'].value() != 'SEQUENCE':
+                        nuke.ViewerProcess.node(l)['key3'].setValue('SEQUENCE')
+                    if nuke.ViewerProcess.node(l)['value3'].value() != self.sequence:
+                        nuke.ViewerProcess.node(l)['value3'].setValue(self.sequence)
 
     def _getCameraColorspaceFromShotgun(self):
 
