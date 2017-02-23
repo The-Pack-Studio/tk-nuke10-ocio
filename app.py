@@ -42,7 +42,11 @@ class NukeOCIONode(tank.platform.Application):
 
             if self.context.entity is not None:
                 self.event = self.context.entity['name']
-                self.sequence = self.context.as_template_fields(self.sgtk.templates['nuke_shot_work'])['Sequence']
+                self.sequence = ''
+                try:
+                    self.sequence = self.context.as_template_fields(self.sgtk.templates['nuke_shot_work'])['Sequence']
+                except:
+                    self.log_debug("No sequence found because no sequence key in the nuke_shot_work template")
                 self.camera_colorspace = self._getCameraColorspaceFromShotgun()
 
                 self._setOCIOSettingsOnRootNode()
