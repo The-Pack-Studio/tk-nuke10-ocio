@@ -199,12 +199,12 @@ class NukeOCIONode(tank.platform.Application):
         readNode = nuke.thisNode()
 
         if callType == 'knobChanged':
-            print 'knobchanged callback'
+            # print 'knobchanged callback'
             fileknob = nuke.thisKnob()
             if fileknob.name() != 'file': # stop if the knob being changed is not the file knob
                 return
         if callType == 'onCreate': # if there's any info already in the ocio context, we don't want to change anything
-            print 'oncreate callback'
+            # print 'oncreate callback'
             if readNode['key1'].value()   != '': return
             if readNode['value1'].value() != '': return
             if readNode['key2'].value()   != '': return
