@@ -50,7 +50,7 @@ class NukeOCIONode(tank.platform.Application):
                 self.camera_colorspace = self._getCameraColorspaceFromShotgun()
 
                 self._setOCIOSettingsOnRootNode()
-                self._setOCIODisplayContext()
+
                 self._add_callbacks()
 
                 self.log_debug("The camera colorspace for shot %s from sequence %s has been fetched from Shotgun and is '%s'" % (self.event, self.sequence, self.camera_colorspace))
@@ -215,7 +215,7 @@ class NukeOCIONode(tank.platform.Application):
         # print 'imagePath', imagePath
         tk = self.sgtk
         tmpl = tk.template_from_path(imagePath)
-        # print 'tmpl', tmpl
+        self.log_debug("Template is %s" % tmpl)
         if tmpl:
             fields = tmpl.get_fields(imagePath)
             shot = fields.get("Shot")
@@ -240,31 +240,22 @@ class NukeOCIONode(tank.platform.Application):
                 readNode['value3'].setValue(sequence)
 
     def _setOCIODisplayContext(self):
-           
-        listVP = nuke.ViewerProcess.registeredNames()
-        viewers = nuke.allNodes('Viewer')
-        ### ideally I'd like to use :
-        #camera_colorspace = self.getCameraColorspaceFromShotgun() 
-        # this would update any new viewer with the last value from the camera colorspace field in shotgun
-        # but this creates a max recursion bug in the callback
-        camera_colorspace = self.camera_colorspace
 
+        OCIODisplayNode = nuke.thisNode()
 
-        for v in viewers:
-            for l in listVP:
-                if nuke.ViewerProcess.node(l, v['name'].value()):
-                    if nuke.ViewerProcess.node(l)['key1'].value() != 'EVENT':
-                        nuke.ViewerProcess.node(l)['key1'].setValue('EVENT')
-                    if nuke.ViewerProcess.node(l)['value1'].value() != self.event:
-                        nuke.ViewerProcess.node(l)['value1'].setValue(self.event)
-                    if nuke.ViewerProcess.node(l)['key2'].value() != 'CAMERA':
-                        nuke.ViewerProcess.node(l)['key2'].setValue('CAMERA')
-                    if nuke.ViewerProcess.node(l)['value2'].value() != camera_colorspace:
-                        nuke.ViewerProcess.node(l)['value2'].setValue(camera_colorspace)
-                    if nuke.ViewerProcess.node(l)['key3'].value() != 'SEQUENCE':
-                        nuke.ViewerProcess.node(l)['key3'].setValue('SEQUENCE')
-                    if nuke.ViewerProcess.node(l)['value3'].value() != self.sequence:
-                        nuke.ViewerProcess.node(l)['value3'].setValue(self.sequence)
+        if OCIODisplayNode.knob('key1').value() != 'EVENT':
+            OCIODisplayNode.knob('key1').setValue('EVENT')
+        if OCIODisplayNode.knob('value1').value() != self.event:
+           OCIODisplayNode.knob('value1').setValue(self.event)
+        if OCIODisplayNode.knob('key2').value() != 'CAMERA':
+            OCIODisplayNode.knob('key2').setValue('CAMERA')
+        if OCIODisplayNode.knob('value2').value() != self.camera_colorspace:
+            OCIODisplayNode.knob('value2').setValue(self.camera_colorspace)
+        if OCIODisplayNode.knob('key3').value() != 'SEQUENCE':
+            OCIODisplayNode.knob('key3').setValue('SEQUENCE')
+        if OCIODisplayNode.knob('value3').value() != self.sequence:
+           OCIODisplayNode.knob('value3').setValue(self.sequence)
+
 
     def _getCameraColorspaceFromShotgun(self):
 
@@ -307,33 +298,3 @@ class NukeOCIONode(tank.platform.Application):
 
 
 
-        # '''
-        # First case : the viewer process LUTs is set to 'Nuke Root LUTs'.
-        # In this case we assume the user has not intervened, Nuke is using it's default values
-        # So we change it to use the project ocio config without asking the user
-        # ''' 
-        # if nuke.root().knob("defaultViewerLUT").value() == 'Nuke Root LUTs':
-
-        #     nuke.root().knob("colorManagement").setValue("OCIO") 
-        #     nuke.root().knob("OCIO_config").setValue("custom") 
-        #     nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
-        #     nuke.root().knob("workingSpaceLUT").setValue(workingSpace)
-
-
-        # '''
-        # Second case : the viewer process LUTs is configured to use OCIO Luts
-        # '''
-        # if nuke.root().knob("defaultViewerLUT").value() == 'OCIO':
-        #     # if the ocio config is not set to custom or if the ocio config file path is not correct we ask the user if he allows us to correct it
-        #     nuke_ocio_path = nuke.root().knob("customOCIOConfigPath").value()
-        #     nuke_ocio_path = nuke.filenameFilter(nuke_ocio_path) # for cross platform compatibility
-        #     if nuke.root().knob("OCIO_config").value() != "custom" or nuke_ocio_path.lower() != ocio_path.lower():
-        #         anwser = nuke.ask('Warning. Your OCIO settings do not match the correct settings for this project<p> \
-        #             Nuke is currently using the %s OCIO config located in:<br><i>%s</i><p>\
-        #             It is supposed to use the custom OCIO config for this project located in:<br><i>%s</i><p>\
-        #             Do you want me to correct the OCIO settings ?<br>Please be aware that changing the OCIO config is going to reset all ocio nodes.' % (nuke.root().knob("OCIO_config").value(), nuke.root().knob("customOCIOConfigPath").value(), ocio_path))
-        #         if anwser:
-        #             nuke.root().knob("colorManagement").setValue("OCIO") 
-        #             nuke.root().knob("OCIO_config").setValue("custom") 
-        #             nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
-        #             nuke.root().knob("workingSpaceLUT").setValue(workingSpace)
