@@ -16,12 +16,12 @@ OCIO handling for Nuke
 import os
 import nuke
 import nozonscripts
-import tank
 import sgtk
-from tank import TankError
+# import tank
+# from tank import TankError
 
 
-class NukeOCIONode(tank.platform.Application):
+class NukeOCIONode(sgtk.platform.Application):
 
     def init_app(self):
         """
@@ -166,10 +166,7 @@ class NukeOCIONode(tank.platform.Application):
 
             colorspace = fields.get("colorspace")
             if not colorspace: # if there's no colorspace field in the template
-                if tmpl.name == 'maya_render_output': colorspace = 'Flat'
-                elif tmpl.name == 'hiero_render_Jpeg_path': colorspace = 'sRGB'
-                elif tmpl.name == 'hiero_render_Flat_path': colorspace = 'Flat'
-                elif tmpl.name == 'hiero_render_path': colorspace = 'Flat'
+                if tmpl.name == 'maya_render_output': colorspace = 'linear'
             if colorspace: # if we now have a colorspace, set it on the ocio context
                 ocioNode['key2'].setValue('CAMERA')
                 ocioNode['value2'].setValue(colorspace)
@@ -179,11 +176,10 @@ class NukeOCIONode(tank.platform.Application):
                 ocioNode['key3'].setValue('SEQUENCE')
                 ocioNode['value3'].setValue(sequence)  
 
-
         if colorspace:
             ocioNode.knob('in_colorspace').setValue(colorspace)
             ocioNode.knob('value2').setValue(colorspace)
-            ocioNode.knob('out_colorspace').setValue('Flat')
+            ocioNode.knob('out_colorspace').setValue('linear')
 
 
     def _setReadNodeOCIO(self, kwargs):
@@ -193,7 +189,7 @@ class NukeOCIONode(tank.platform.Application):
         # possible problem when changing the file to the exact same file : in that case the colorspace will be reset
         
         # what should I do when creating a read from a sequence with a shotgrade or globalgrade baked in ? Interpret as sRGB ?
-        # what If I load a render from another project ? Interpret as Flat anyway ?
+        # what If I load a render from another project ? Interpret as linear anyway ?
 
         callType = kwargs['callType']
         readNode = nuke.thisNode()
@@ -225,10 +221,7 @@ class NukeOCIONode(tank.platform.Application):
 
             colorspace = fields.get("colorspace")
             if not colorspace: # if there's no colorspace field in the template
-                if tmpl.name == 'maya_render_output': colorspace = 'Flat'
-                elif tmpl.name == 'hiero_render_Jpeg_path': colorspace = 'sRGB'
-                elif tmpl.name == 'hiero_render_Flat_path': colorspace = 'Flat'
-                elif tmpl.name == 'hiero_render_path': colorspace = 'Flat'
+                if tmpl.name == 'maya_render_output': colorspace = 'linear'
             if colorspace: # if we now have a colorspace set it on the ocio context and on the read node colorspace knob
                 readNode['key2'].setValue('CAMERA')
                 readNode['value2'].setValue(colorspace)
