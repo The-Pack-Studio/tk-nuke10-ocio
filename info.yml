@@ -16,18 +16,6 @@ configuration:
         type: template
         description: Reference to the template which locates the OCIO config file on disk
         allows_empty: False
-    workingspace:
-        type: str
-        description: Colorspace that Nuke uses internally for its image processing. This automatically sets the 'in' colorspace of Write
-            nodes and Viewer Processes, and the 'out' colorspace for Read nodes
-        default_value: 'linear'
-    colorspaces:
-        type: list
-        values: {type: str}
-        description : List of colorspaces
-        allows_empty : False
-        default_value: ['linear', 'sRGB', 'AlexaV3LogC', 'RedLogFilm', 'RedGamma3', 'RedGamma4', 'PhantomLog1', 'PhantomLog2', 'S-Log2', 'S-Log3']
-              
 
 
 # the Shotgun fields that this app needs in order to operate correctly
