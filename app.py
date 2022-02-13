@@ -12,7 +12,7 @@
 OCIO handling for Nuke
 
 """
-
+from __future__ import print_function
 import os
 import nuke
 import nozonscripts
@@ -185,11 +185,11 @@ class NukeOCIONode(sgtk.platform.Application):
         Useful to override default color spaces derived from metadata, file type,...
         see https://learn.foundry.com/nuke/developers/13.0/pythonreference/callbacks.html
         """
-        print "colorspace name is: %s " % colorspaceName
-        print "dataTypeHint is: %s " % dataTypeHint
+        print("colorspace name is: %s " % colorspaceName)
+        print("dataTypeHint is: %s " % dataTypeHint)
         
         if colorspaceName == "rec709" and dataTypeHint == -1: # works for mp4 files
-            colorspaceName = "srgb"
+            colorspaceName = "sRGB"
 
         if colorspaceName == "Gamma2.2" and dataTypeHint == -1: # works for mxf files
             colorspaceName = "AlexaV3LogC"
