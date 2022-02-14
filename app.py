@@ -15,7 +15,6 @@ OCIO handling for Nuke
 from __future__ import print_function
 import os
 import nuke
-import nozonscripts
 import sgtk
 
 
