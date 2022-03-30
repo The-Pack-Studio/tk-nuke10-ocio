@@ -25,33 +25,27 @@ class NukeOCIONode(sgtk.platform.Application):
         Called as the application is being initialized
         """
 
-        # this app should not do anything if nuke is run without gui.
+        # first deal with nuke root settings: we don't need a context for this
+        self._setOCIOSettingsOnRootNode() # if I don't do this and do a File/New in Nuke, the new instance of nuke does not set the OCIO settings on the root node.
+        self._add_root_callbacks()
+        self.log_debug("Loading tk-nuke-ocio app.")
 
-        if nuke.env['gui']:
+        #setting stuff as the app is initialised. Not very good if the context is changed ?
+        if self.context.entity is not None:
+            self.entity_name = self.context.entity['name']
+            self.sequence = ''
+            try:
+                self.sequence = self.context.as_template_fields(self.sgtk.templates['nuke_shot_work'])['Sequence']
+            except:
+                self.log_debug("No sequence found because no sequence key in the nuke_shot_work template")
+            self.camera_colorspace = self._getCameraColorspaceFromShotgun()
 
-            # first deal with nuke root settings: we don't need a context for this
-            self._setOCIOSettingsOnRootNode() # if I don't do this and do a File/New in Nuke, the new instance of nuke does not set the OCIO settings on the root node.
-            self._add_root_callbacks()
-            self.log_debug("Loading tk-nuke-ocio app.")
+            # self._setOCIOSettingsOnRootNode()
 
-            #setting stuff as the app is initialised. Not very good if the context is changed ?
-            if self.context.entity is not None:
-                self.entity_name = self.context.entity['name']
-                self.sequence = ''
-                try:
-                    self.sequence = self.context.as_template_fields(self.sgtk.templates['nuke_shot_work'])['Sequence']
-                except:
-                    self.log_debug("No sequence found because no sequence key in the nuke_shot_work template")
-                self.camera_colorspace = self._getCameraColorspaceFromShotgun()
+            self._add_callbacks()
 
-                # self._setOCIOSettingsOnRootNode()
+            self.log_debug("The camera(grading) colorspace for shot %s from sequence %s is '%s'" % (self.entity_name, self.sequence, self.camera_colorspace))
 
-                self._add_callbacks()
-
-                self.log_debug("The camera(grading) colorspace for shot %s from sequence %s is '%s'" % (self.entity_name, self.sequence, self.camera_colorspace))
-
-        else:
-            pass
 
     @property
     def context_change_allowed(self):
