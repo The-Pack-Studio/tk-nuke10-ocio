@@ -184,6 +184,7 @@ class NukeOCIONode(sgtk.platform.Application):
         node = nuke.thisNode()
         cs_knob = node.knob('colorspace')
         filepath = node.knob('file').getValue()
+        filename = os.path.basename(filepath)
 
         file_ext = os.path.splitext(filepath)[1]
 
@@ -191,17 +192,12 @@ class NukeOCIONode(sgtk.platform.Application):
         if cs_knob.getFlag(nuke.STRIP_CASCADE_PREFIX):
             allColorspaces = [cs.split("\t")[-1] for cs in allColorspaces]
 
-        colorspace_from_tmpl = None
-        tmpl = self.sgtk.template_from_path(filepath)
+        # search for colorspace as a substring in the filename
+        for cs in allColorspaces:
+            if cs in filename:
+                colorspaceName = cs
 
-        if tmpl:
-            fields = tmpl.get_fields(filepath)
-            colorspace_from_tmpl = fields.get("colorspace") # could be None
-
-        if colorspace_from_tmpl in allColorspaces:
-            colorspaceName = colorspace_from_tmpl
-
-        # Draft mp4 files have a colorspace key, which in that case should be ignored.
+        # Draft mp4 files have the original colorspace name in their filename, which in that case should be ignored.
         if file_ext == ".mp4":
             colorspaceName = "sRGB"
 
