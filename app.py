@@ -204,7 +204,10 @@ class NukeOCIONode(sgtk.platform.Application):
         if colorspaceName == "rec709" and dataTypeHint == -1: # works for mp4 files
             colorspaceName = "sRGB"
 
-        if colorspaceName == "Gamma2.2" and dataTypeHint == -1: # works for mxf files
-            colorspaceName = "AlexaV3LogC"
+        # The following was not working : setting Nuke to default MXF files to be interpreted as Alexa :
+        # This is working until a transcode process opens a nuke process > the nuke export process doesn't inherit
+        # this defaultcolorspacematter, which makes it fall back again to 'Gamma2.2'
+        # if colorspaceName == "Gamma2.2" and dataTypeHint == -1: # works for mxf files
+        #     colorspaceName = "AlexaV3LogC"
 
         return colorspaceName
