@@ -145,7 +145,10 @@ class NukeOCIONode(sgtk.platform.Application):
 
         data = self.shotgun.find_one(sg_entity_type, filters=sg_filters, fields=sg_fields)
 
-        return data['sg_camera_colorspace']
+        if not data:
+            return None
+
+        return data.get('sg_camera_colorspace')
 
     
     def _warningNoCameraColorspace(self):
