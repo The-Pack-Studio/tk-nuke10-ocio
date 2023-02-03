@@ -38,13 +38,15 @@ class NukeOCIONode(sgtk.platform.Application):
                 self.sequence = self.context.as_template_fields(self.sgtk.templates['nuke_shot_work'])['Sequence']
             except:
                 self.log_debug("No sequence found because no sequence key in the nuke_shot_work template")
-            self.camera_colorspace = self._getCameraColorspaceFromShotgun()
+            self.camera_colorspace, self.review_colorspace = self._getColorspaceInfoFromShotgun()
+
 
             # self._setOCIOSettingsOnRootNode()
 
             self._add_callbacks()
 
-            self.log_debug("The camera(grading) colorspace for shot %s from sequence %s is '%s'" % (self.entity_name, self.sequence, self.camera_colorspace))
+            self.log_debug("Shot %s from sequence %s : The camera colorspace is: %s and the review_colorspace is: %s " % (self.entity_name, 
+                                                                            self.sequence, self.camera_colorspace, self.review_colorspace))
 
 
     @property
@@ -133,22 +135,33 @@ class NukeOCIONode(sgtk.platform.Application):
             OCIODisplayNode.knob('key3').setValue('SEQUENCE')
         if OCIODisplayNode.knob('value3').value() != self.sequence:
            OCIODisplayNode.knob('value3').setValue(self.sequence)
+        if OCIODisplayNode.knob('key4').value() != 'REVIEW':
+            OCIODisplayNode.knob('key4').setValue('REVIEW')
+        if OCIODisplayNode.knob('value4').value() != self.review_colorspace:
+           OCIODisplayNode.knob('value4').setValue(self.review_colorspace)
 
 
-    def _getCameraColorspaceFromShotgun(self):
+
+    def _getColorspaceInfoFromShotgun(self):
 
         entity = self.context.entity
 
         sg_entity_type = entity["type"]  # should be Shot
         sg_filters = [["id", "is", entity["id"]]]  #  code of the current shot
-        sg_fields = ['sg_camera_colorspace']
+        sg_fields = ['sg_camera_colorspace', 'sg_review_colorspace']
 
         data = self.shotgun.find_one(sg_entity_type, filters=sg_filters, fields=sg_fields)
 
         if not data:
             return None
 
-        return data.get('sg_camera_colorspace')
+        camera_colorspace = data.get('sg_camera_colorspace')
+        review_colorspace = data.get('sg_review_colorspace')
+
+        self.log_debug("Getting info from Shotgun : camera colorspace is: %s and review colorspace is: %s" % (camera_colorspace, review_colorspace))
+
+        return (str(camera_colorspace or ''), str(review_colorspace or ''))
+
 
     
     def _warningNoCameraColorspace(self):
@@ -158,8 +171,10 @@ class NukeOCIONode(sgtk.platform.Application):
         if camera_colorspace == '' or camera_colorspace == None:
             nuke.message('Warning : The camera colorspace of shot %s could not be determined.\n\
                 Please check the Shot infos on our shotgun website and fill the camera colorspace field' % self.entity_name)
+
         
         self.log_debug("Checking the camera colorspace in shotgun")
+
 
 
     def _setOCIOSettingsOnRootNode(self):
