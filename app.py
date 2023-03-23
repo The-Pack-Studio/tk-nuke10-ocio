@@ -30,23 +30,29 @@ class NukeOCIONode(sgtk.platform.Application):
         self._add_root_callbacks()
         self.log_debug("Loading tk-nuke-ocio app.")
 
-        #setting stuff as the app is initialised. Not very good if the context is changed ?
-        if self.context.entity is not None:
-            self.entity_name = self.context.entity['name']
-            self.sequence = ''
-            try:
-                self.sequence = self.context.as_template_fields(self.sgtk.templates['nuke_shot_work'])['Sequence']
-            except:
-                self.log_debug("No sequence found because no sequence key in the nuke_shot_work template")
-            self.camera_colorspace, self.review_colorspace = self._getColorspaceInfoFromShotgun()
+        if self.context.entity:
+            self.exec_app(self.context)
 
 
-            # self._setOCIOSettingsOnRootNode()
+    def exec_app(self, context):
 
-            self._add_callbacks()
 
-            self.log_debug("Shot %s from sequence %s : The camera colorspace is: %s and the review_colorspace is: %s " % (self.entity_name, 
-                                                                            self.sequence, self.camera_colorspace, self.review_colorspace))
+        self.entity_name = context.entity['name']
+        self.sequence = ''
+        try:
+            self.sequence = context.as_template_fields(self.sgtk.templates['nuke_shot_work'])['Sequence']
+        except:
+            self.log_debug("No sequence found because no sequence key in the nuke_shot_work template")
+        
+        self.camera_colorspace, self.shot_lut = self._getColorspaceInfoFromShotgun(context)
+
+
+        self._add_callbacks()
+
+        self.log_debug("Shot %s from sequence %s : The camera colorspace is: %s and the shot lut is: %s " % (self.entity_name, 
+                                                                            self.sequence, self.camera_colorspace, self.shot_lut))
+
+
 
 
     @property
@@ -54,10 +60,8 @@ class NukeOCIONode(sgtk.platform.Application):
         """
         Specifies that context changes are allowed.
 
-        Donat note to self: I return False here, meaning that when the context changes
-        > This app will be destroyed and reloaded
         """
-        return False
+        return True
 
 
     def destroy_app(self):
@@ -89,7 +93,8 @@ class NukeOCIONode(sgtk.platform.Application):
         """
         Add callbacks to watch for certain events:
         """
-        nuke.addOnUserCreate(self._setOCIOColorspaceContext, nodeClass="OCIOColorSpace")
+        nuke.addOnUserCreate(self._setOCIOContext, nodeClass="OCIOColorSpace")
+        nuke.addOnCreate(self._setOCIOContext, nodeClass="Read")
         nuke.addOnCreate(self._setOCIODisplayContext, nodeClass="OCIODisplay")
         nuke.addOnCreate(self._warningNoCameraColorspace, nodeClass='Root' )
 
@@ -97,26 +102,49 @@ class NukeOCIONode(sgtk.platform.Application):
         """
         Removed previously added callbacks
         """
-        nuke.removeOnUserCreate(self._setOCIOColorspaceContext, nodeClass="OCIOColorSpace")
+        nuke.removeOnUserCreate(self._setOCIOContext, nodeClass="OCIOColorSpace")
+        nuke.removeOnCreate(self._setOCIOContext, nodeClass="Read")
         nuke.removeOnCreate(self._setOCIODisplayContext, nodeClass="OCIODisplay")
         nuke.removeOnCreate(self._warningNoCameraColorspace, nodeClass='Root' )
 
 
-    def _setOCIOColorspaceContext(self):
+    def _setOCIOContext(self):
         '''
-        Setting up the knobs of the OCIOColorspace node based on current context
-        In previous versions of this app, I checked if a read node from another shot was attached to the OCIO Colorspace node, and checked that
-        read node to find it's shot
+        Setting the color context on OCIO context
+
+        The context variables on OCIO nodes (eg OCIO Colorspace node, Read node) is used whenever the colorspace 
+        depends on a context to be properly resolved. (e.g. Shotgrade)
+
+        This will always use the context of the current shot, even for Read nodes from other comps
+
+        When importing an offline plate from another shot, assuming this offline plate has that shot's baked in shotgrade,
+        interpreting it with the Shotgrade of the current shot will be cancelled to the viewer Shotgrade lut of the current
+        shot, thus the external read node will be seen with its actual baked in shotgrade
+
+        NB: when copy pasting a read node from one comp to the other, the ocio context will change
+
         '''
 
-        ocioNode = nuke.thisNode()
 
-        ocioNode['key1'].setValue('EVENT')
-        ocioNode['value1'].setValue(self.entity_name)
-        ocioNode['key2'].setValue('CAMERA')
-        ocioNode['value2'].setValue(self.camera_colorspace)
-        ocioNode['key3'].setValue('SEQUENCE')
-        ocioNode['value3'].setValue(self.sequence)
+        node = nuke.thisNode()
+
+
+        # self.log_debug("setting ocio context on %s" % node.name())
+
+        node['key1'].setValue('EVENT')
+        node['value1'].setValue(self.entity_name)
+        node['key2'].setValue('CAMERA')
+        node['value2'].setValue(self.camera_colorspace)
+        node['key3'].setValue('SEQUENCE')
+        node['value3'].setValue(self.sequence)
+        node['key4'].setValue('SHOTLUT')
+        node['value4'].setValue(self.shot_lut)
+
+
+
+
+
+
 
 
     def _setOCIODisplayContext(self):
@@ -135,32 +163,32 @@ class NukeOCIONode(sgtk.platform.Application):
             OCIODisplayNode.knob('key3').setValue('SEQUENCE')
         if OCIODisplayNode.knob('value3').value() != self.sequence:
            OCIODisplayNode.knob('value3').setValue(self.sequence)
-        if OCIODisplayNode.knob('key4').value() != 'REVIEW':
-            OCIODisplayNode.knob('key4').setValue('REVIEW')
-        if OCIODisplayNode.knob('value4').value() != self.review_colorspace:
-           OCIODisplayNode.knob('value4').setValue(self.review_colorspace)
+        if OCIODisplayNode.knob('key4').value() != 'SHOTLUT':
+            OCIODisplayNode.knob('key4').setValue('SHOTLUT')
+        if OCIODisplayNode.knob('value4').value() != self.shot_lut:
+           OCIODisplayNode.knob('value4').setValue(self.shot_lut)
 
 
 
-    def _getColorspaceInfoFromShotgun(self):
+    def _getColorspaceInfoFromShotgun(self, context):
 
-        entity = self.context.entity
+        entity = context.entity
 
         sg_entity_type = entity["type"]  # should be Shot
         sg_filters = [["id", "is", entity["id"]]]  #  code of the current shot
-        sg_fields = ['sg_camera_colorspace', 'sg_review_colorspace']
+        sg_fields = ['sg_camera_colorspace', 'sg_shot_lut']
 
         data = self.shotgun.find_one(sg_entity_type, filters=sg_filters, fields=sg_fields)
 
         if not data:
-            return None
+            return ("", "")
 
         camera_colorspace = data.get('sg_camera_colorspace')
-        review_colorspace = data.get('sg_review_colorspace')
+        shot_lut = data.get('sg_shot_lut')
 
-        self.log_debug("Getting info from Shotgun : camera colorspace is: %s and review colorspace is: %s" % (camera_colorspace, review_colorspace))
+        self.log_debug("Getting info from Shotgun : camera colorspace is: %s and shot lut is: %s" % (camera_colorspace, shot_lut))
 
-        return (str(camera_colorspace or ''), str(review_colorspace or ''))
+        return (str(camera_colorspace or ''), str(shot_lut or ''))
 
 
     
