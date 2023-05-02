@@ -61,7 +61,7 @@ class NukeOCIONode(sgtk.platform.Application):
         Specifies that context changes are allowed.
 
         """
-        return True
+        return False
 
 
     def destroy_app(self):
