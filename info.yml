@@ -16,7 +16,10 @@ configuration:
         type: template
         description: Reference to the template which locates the OCIO config file on disk
         allows_empty: False
-
+    working_space:
+        type: str
+        description: color space (or role) that will be used as the working space in Nuke
+        default_value: scene_linear
 
 # the Shotgun fields that this app needs in order to operate correctly
 requires_shotgun_fields:

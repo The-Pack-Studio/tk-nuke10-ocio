@@ -215,8 +215,9 @@ class NukeOCIONode(sgtk.platform.Application):
         nuke.root().knob("OCIO_config").setValue("custom")
         if ocio_path != nuke.filenameFilter(nuke.root().knob("customOCIOConfigPath").value()): # only set the ocio path if it's not already set. Do not change it if it's the same path written for another platform
             nuke.root().knob("customOCIOConfigPath").setValue(ocio_path)
-        # By convention, the scene_linear role is used as working space
-        nuke.root().knob("workingSpaceLUT").setValue("scene_linear")
+        
+        working_space = self.get_setting("working_space")
+        nuke.root().knob("workingSpaceLUT").setValue(working_space)
 
 
     def _nozonDefaultColorspaceMapper(self, colorspaceName, dataTypeHint, *args, **kwargs):
