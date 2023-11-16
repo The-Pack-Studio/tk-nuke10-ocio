@@ -38,4 +38,4 @@ supported_engines: [tk-nuke]
 
 # the frameworks required to run this app
 frameworks:
-    
+    - {"name": "tk-framework-nozon", "version": "v0.x.x"}

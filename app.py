@@ -16,6 +16,7 @@ from __future__ import print_function
 import os
 import nuke
 import sgtk
+import PyOpenColorIO as OCIO
 
 
 class NukeOCIONode(sgtk.platform.Application):
@@ -30,8 +31,13 @@ class NukeOCIONode(sgtk.platform.Application):
         self._add_root_callbacks()
         self.log_debug("Loading tk-nuke-ocio app.")
 
+        fw = self.frameworks['tk-framework-nozon']
+        self.csp = fw.import_module("colorspace")
+
         if self.context.entity:
             self.exec_app(self.context)
+
+        self.config_colorspaces = self.csp.ColorSpace().get_config_colorspaces()
 
 
     def exec_app(self, context):
@@ -228,19 +234,15 @@ class NukeOCIONode(sgtk.platform.Application):
         # print("colorspace name is: %s " % colorspaceName)
         # print("dataTypeHint is: %s " % dataTypeHint)
 
-        node = nuke.thisNode()
-        cs_knob = node.knob('colorspace')
-        filepath = node.knob('file').getValue()
+        read_node = nuke.thisNode()
+
+        filepath = read_node.knob('file').getValue()
+        filepath = nuke.filenameFilter(filepath)
+        filepath = os.path.normpath(filepath)
         filename = os.path.basename(filepath)
+        file_ext = os.path.splitext(filename)[1]
 
-        file_ext = os.path.splitext(filepath)[1]
-
-        allColorspaces = nuke.colorspaces.getColorspaceList(cs_knob)[1:]
-        if cs_knob.getFlag(nuke.STRIP_CASCADE_PREFIX):
-            allColorspaces = [cs.split("\t")[-1] for cs in allColorspaces]
-
-        # search for colorspace as a substring in the filename
-        for cs in allColorspaces:
+        for cs in self.config_colorspaces:
             if cs in filename:
                 colorspaceName = cs
 
