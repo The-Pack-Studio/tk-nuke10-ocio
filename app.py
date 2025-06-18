@@ -225,6 +225,9 @@ class NukeOCIONode(sgtk.platform.Application):
         working_space = self.get_setting("working_space")
         nuke.root().knob("workingSpaceLUT").setValue(working_space)
 
+        # Force reload the color config
+        # nuke.root().knob("reloadConfig").execute()
+
 
     def _nozonDefaultColorspaceMapper(self, colorspaceName, dataTypeHint, *args, **kwargs):
         """
@@ -235,6 +238,11 @@ class NukeOCIONode(sgtk.platform.Application):
         # print("dataTypeHint is: %s " % dataTypeHint)
 
         read_node = nuke.thisNode()
+
+        # I notice that in NukeStudio this gets called from the root node, i.e.
+        # nuke.thisNode() is the root node. So we need to check if this is a Read node
+        if not read_node.Class() == "Read":
+            return colorspaceName
 
         filepath = read_node.knob('file').getValue()
         filepath = nuke.filenameFilter(filepath)
